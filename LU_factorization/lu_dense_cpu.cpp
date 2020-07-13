@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -5,13 +6,7 @@
 
 const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", "\n");
 
-void dump_to_csv(std::string fname, const Eigen::Matrix<double, 10, 10>& mat)
-{
-  std::ofstream file(fname.c_str());
-  file << mat.format(CSVFormat);
-  file.close();
-}
-void dump_to_csv(std::string fname, const Eigen::Matrix<double, 3, 3>& mat)
+void dump_to_csv(std::string fname, const Eigen::Ref<const Eigen::MatrixXd>& mat)
 {
   std::ofstream file(fname.c_str());
   file << mat.format(CSVFormat);
@@ -20,12 +15,22 @@ void dump_to_csv(std::string fname, const Eigen::Matrix<double, 3, 3>& mat)
 
 int main(int argc, char **argv)
 {
-  //Eigen::Matrix<double, 10, 10> A = Eigen::Matrix<double, 10, 10>::Random();
-  Eigen::Matrix<double, 3, 3> A; A << 1,2,3,4,5,6,7,8,9;
-  Eigen::Matrix<double, 3, 3> L = Eigen::Matrix<double, 3, 3>::Identity();
+  int n = 0;
+  if (argc >= 2)
+  {
+    n = atoi(argv[1]);
+  }
+  else
+  {
+    n = 10;
+  }
+
+  Eigen::MatrixXd A;
+  A = Eigen::MatrixXd::Random(n, n);
+  Eigen::MatrixXd L = Eigen::MatrixXd::Identity(n, n);
   dump_to_csv(std::string("full.csv"), A);
 
-  // Naive
+  // Naive, should use OpenMP or similar to go fastah
   for (int col_i = 0; col_i < A.cols()-1; ++col_i)
   {
     for (int row_i = col_i+1; row_i < A.rows(); ++row_i)
