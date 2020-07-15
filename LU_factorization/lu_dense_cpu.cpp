@@ -25,9 +25,18 @@ int main(int argc, char **argv)
     n = 10;
   }
 
-  Eigen::MatrixXd A;
-  A = Eigen::MatrixXd::Random(n, n);
-  Eigen::MatrixXd L = Eigen::MatrixXd::Identity(n, n);
+  Eigen::Matrix<double,
+                Eigen::Dynamic,
+                Eigen::Dynamic,
+                Eigen::RowMajor> A, L;
+  A = Eigen::Matrix<double,
+                    Eigen::Dynamic,
+                    Eigen::Dynamic,
+                    Eigen::RowMajor>::Random(n, n);
+  L = Eigen::Matrix<double,
+                    Eigen::Dynamic,
+                    Eigen::Dynamic,
+                    Eigen::RowMajor>::Identity(n, n);
   dump_to_csv(std::string("full.csv"), A);
 
   // Naive, should use OpenMP or similar to go fastah
