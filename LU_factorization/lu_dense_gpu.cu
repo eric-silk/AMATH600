@@ -36,6 +36,25 @@ void daxpy(double A, thrust::device_vector<double>& X, thrust::device_vector<dou
   thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), daxpy_functor(A));
 }
 
+struct to_zero_functor
+{
+  const double epsilon;
+  to_zero_functor(double _epsilon) : epsilon(_epsilon) {}
+  __host__ __device__
+    double operator()(const double& x) const
+    {
+      if (std::abs(x) <= epsilon)
+        return 0;
+      else
+        return x;
+    }
+};
+
+void to_zero(double epsilon, thrust::device_vector<double>& X)
+{
+  thrust::transform(X.begin(), X.end(), X.begin(), to_zero_functor(epsilon));
+}
+
 LU LU_factorization(const std::vector<double>& A, size_t n);
 void print_matrix(const std::vector<double>& A, size_t n);
 double rand_0_1(void);
@@ -56,15 +75,15 @@ int main(int argc, char **argv)
   A.resize(n*n);
   std::srand(std::time(nullptr));
   std::generate(A.begin(), A.end(), rand_0_1);
-  std::cout << "A:" << std::endl;
-  print_matrix(A, n);
+  //std::cout << "A:" << std::endl;
+  //print_matrix(A, n);
 
   auto factored = LU_factorization(A, n);
 
-  std::cout << "U:" << std::endl;
-  print_matrix(factored.U, n);
-  std::cout << "L:" << std::endl;
-  print_matrix(factored.L, n);
+  //std::cout << "U:" << std::endl;
+  //print_matrix(factored.U, n);
+  //std::cout << "L:" << std::endl;
+  //print_matrix(factored.L, n);
 
   return 0;
 }
@@ -108,17 +127,12 @@ LU LU_factorization(const std::vector<double>& A, const size_t n)
   {
     std::copy(U.begin()+(col*n), U.begin()+((col+1)*n), top_row_host.begin());
     top_row_dev = top_row_host;
-    std::cout << "top row:" << std::endl;
-    for (auto i = top_row_host.begin(); i != top_row_host.end(); ++i)
-    {
-      std::cout << *i << " ";
-    }
-    std::cout << std::endl;
     for (int row = col+1; row < n; ++row)
     {
       size_t num_coeff = row*n+col;
       size_t den_coeff = col*n+col;
       double coeff = -(U[num_coeff] / U[den_coeff]);
+      L[num_coeff] = coeff;
 
       // Copy the Rows to the host vector, then device vector
       size_t start_loc = row*n+col;
@@ -136,10 +150,16 @@ LU LU_factorization(const std::vector<double>& A, const size_t n)
                    reducing_row_host.end(),
                    U.begin()+start_loc);
     }
-    print_matrix(U, n);
+    //print_matrix(U, n);
   }
 
   // now round down the zeros given some threshold
+  thrust::host_vector<double> final_host(n*n);
+  std::copy(U.begin(), U.end(), final_host.begin());
+  thrust::device_vector<double> final_dev = final_host;
+  to_zero(1e-12, final_dev); 
+  final_host = final_dev;
+  thrust::copy(final_host.begin(), final_host.end(), U.begin());
 
   LU retval;
   retval.U = U;
