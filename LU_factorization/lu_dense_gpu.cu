@@ -56,6 +56,11 @@ int main(int argc, char **argv)
   A.resize(n*n);
   std::srand(std::time(nullptr));
   std::generate(A.begin(), A.end(), rand_0_1);
+  // Actually do a linspace for now
+  for (size_t i = 1; i < (n*n)+1; ++i)
+  {
+    A[i-1] = i;
+  }
   std::cout << "A:" << std::endl;
   print_matrix(A, n);
 
@@ -106,21 +111,31 @@ LU LU_factorization(const std::vector<double>& A, const size_t n)
 
   for (size_t col = 0; col < n-1; ++col)
   {
-    std::copy(A.begin()+(col*n), A.begin()+((col+1)*n), top_row_host.begin());
+    std::copy(U.begin()+(col*n), U.begin()+((col+1)*n), top_row_host.begin());
     top_row_dev = top_row_host;
+    std::cout << "(num, den): ";
     for (int row = col+1; row < n; ++row)
     {
-      double coeff = -(A[row*n+col] / A[col*n+col]);
+      size_t num_coeff = row*n+col;
+      size_t den_coeff = col*n+col;
+      double coeff = -(U[num_coeff] / U[den_coeff]);
+      std::cout << "(" << A[num_coeff] << ", " << A[den_coeff] << ") ";
+
       // Copy the Rows to the host vector, then device vector
-      std::copy(A.begin()+(row*n), A.begin()+(2*row*n), reducing_row_host.begin());
+      size_t start_loc = row*n+col;
+      size_t end_loc = (row+1)*n;
+      std::copy(U.begin()+(start_loc), U.begin()+(end_loc), reducing_row_host.begin());
       reducing_row_dev = reducing_row_host;
       // Scale and add
       daxpy(coeff, top_row_dev, reducing_row_dev);
       reducing_row_host = reducing_row_dev;
+
       thrust::copy(reducing_row_host.begin(),
-                   reducing_row_host.end(),
-                   U.begin()+(row*n));
+                   reducing_row_host.end()-col,
+                   U.begin()+start_loc);
     }
+    std::cout << std::endl << "Col: " << col << std::endl;
+    print_matrix(U, n);
   }
 
   LU retval;
