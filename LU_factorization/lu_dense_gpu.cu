@@ -56,11 +56,6 @@ int main(int argc, char **argv)
   A.resize(n*n);
   std::srand(std::time(nullptr));
   std::generate(A.begin(), A.end(), rand_0_1);
-  // Actually do a linspace for now
-  for (size_t i = 1; i < (n*n)+1; ++i)
-  {
-    A[i-1] = i;
-  }
   std::cout << "A:" << std::endl;
   print_matrix(A, n);
 
@@ -113,30 +108,38 @@ LU LU_factorization(const std::vector<double>& A, const size_t n)
   {
     std::copy(U.begin()+(col*n), U.begin()+((col+1)*n), top_row_host.begin());
     top_row_dev = top_row_host;
-    std::cout << "(num, den): ";
+    std::cout << "top row:" << std::endl;
+    for (auto i = top_row_host.begin(); i != top_row_host.end(); ++i)
+    {
+      std::cout << *i << " ";
+    }
+    std::cout << std::endl;
     for (int row = col+1; row < n; ++row)
     {
       size_t num_coeff = row*n+col;
       size_t den_coeff = col*n+col;
       double coeff = -(U[num_coeff] / U[den_coeff]);
-      std::cout << "(" << A[num_coeff] << ", " << A[den_coeff] << ") ";
 
       // Copy the Rows to the host vector, then device vector
       size_t start_loc = row*n+col;
-      size_t end_loc = (row+1)*n;
-      std::copy(U.begin()+(start_loc), U.begin()+(end_loc), reducing_row_host.begin());
+      size_t end_loc = start_loc+(n-col);
+      thrust::fill(reducing_row_host.begin(), reducing_row_host.begin()+col, 0);
+      std::copy(U.begin()+(start_loc),
+                U.begin()+(end_loc),
+                reducing_row_host.begin()+col);
       reducing_row_dev = reducing_row_host;
       // Scale and add
       daxpy(coeff, top_row_dev, reducing_row_dev);
-      reducing_row_host = reducing_row_dev;
 
-      thrust::copy(reducing_row_host.begin(),
-                   reducing_row_host.end()-col,
+      reducing_row_host = reducing_row_dev;
+      thrust::copy(reducing_row_host.begin()+col,
+                   reducing_row_host.end(),
                    U.begin()+start_loc);
     }
-    std::cout << std::endl << "Col: " << col << std::endl;
     print_matrix(U, n);
   }
+
+  // now round down the zeros given some threshold
 
   LU retval;
   retval.U = U;
