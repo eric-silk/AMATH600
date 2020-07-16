@@ -75,15 +75,8 @@ int main(int argc, char **argv)
   A.resize(n*n);
   std::srand(std::time(nullptr));
   std::generate(A.begin(), A.end(), rand_0_1);
-  //std::cout << "A:" << std::endl;
-  //print_matrix(A, n);
 
   auto factored = LU_factorization(A, n);
-
-  //std::cout << "U:" << std::endl;
-  //print_matrix(factored.U, n);
-  //std::cout << "L:" << std::endl;
-  //print_matrix(factored.L, n);
 
   return 0;
 }
