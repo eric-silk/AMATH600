@@ -1,5 +1,7 @@
 // Copied and adapted from:
 // https://github.com/thrust/thrust/blob/master/examples/strided_range.cu
+#ifndef STRIDED_ITERATOR_CUH
+#define STRIDED_ITERATOR_CUH
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/iterator/transform_iterator.h>
 #include <thrust/iterator/permutation_iterator.h>
@@ -44,14 +46,22 @@ class strided_range
       // NTD
     }
 
+    strided_range(Iterator first, Iterator last, size_t stride)
+      : first(first)
+      , last(last)
+      , stride(stride)
+    {
+      // NTD
+    }
+
     iterator begin(void) const
     {
-      return PermutationIterator(first, TransformIterator(CountingIterator(0), stride_functor(stride));
+      return PermutationIterator(first, TransformIterator(CountingIterator(0), stride_functor(stride)));
     }
 
     iterator end(void) const
     {
-      return begin() + ((last - first) + (stride - 1)) / stride;
+      return this->begin() + ((last - first) + (stride - 1)) / stride;
     }
   
   protected:
@@ -59,3 +69,4 @@ class strided_range
     Iterator last;
     difference_type stride;
 };
+#endif//STRIDED_ITERATOR_CUH

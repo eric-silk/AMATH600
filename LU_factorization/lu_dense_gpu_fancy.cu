@@ -10,6 +10,8 @@
 #include <math.h>
 #include <assert.h>
 
+#include "strided_iterator.cuh"
+
 struct LU
 {
   LU() = default;
@@ -105,54 +107,24 @@ LU LU_factorization(const std::vector<double>& A, const size_t n)
   std::vector<double> U(n*n);
   std::vector<double> L(n*n, 0);
 
-  // Initialize them
-  std::copy(A.begin(), A.end(), U.begin());
-  for (size_t i = 0; i < n; ++i)
+  thrust::host_vector<double>   U_h = A;
+  thrust::device_vector<double> U_d = U_h;
+  thrust::device_vector<double> Coeffs(n);
+
+  // Let's start with just iterating manually over columns
+  // Probably replace this with a counting iterator
+  for (size_t col = 0; col < n; ++col)
   {
-    L[i*(n+1)] = 1.0;
+    // Constant iterator for the current top row
+    thrust::constant_iterator<double> numerator(U_d[col*(n+1)]);
+    // strided iterator for the coff calcs
+    strided_range denominator(U_d.begin()+(n*col)+n, U.end(), n);
+    // Coeff iterator
+    auto first = thrust::make_zip_iterator(thrust::make_tuple(numerator, denominator.begin()));
+    auto last = thrust::make_zip_iterator(thrust::make_tuple(numerator, denominator.end()));
+
+    thrust::copy(first, last, std::ostream_iterator<double>(std::cout, "\n"));
   }
-
-  thrust::host_vector<double> top_row_host(n);
-  thrust::device_vector<double> top_row_dev(n);
-  thrust::host_vector<double> reducing_row_host(n);
-  thrust::device_vector<double> reducing_row_dev(n);
-
-  for (size_t col = 0; col < n-1; ++col)
-  {
-    std::copy(U.begin()+(col*n), U.begin()+((col+1)*n), top_row_host.begin());
-    top_row_dev = top_row_host;
-    for (int row = col+1; row < n; ++row)
-    {
-      size_t num_coeff = row*n+col;
-      size_t den_coeff = col*n+col;
-      double coeff = -(U[num_coeff] / U[den_coeff]);
-      L[num_coeff] = coeff;
-
-      // Copy the Rows to the host vector, then device vector
-      size_t start_loc = row*n+col;
-      size_t end_loc = start_loc+(n-col);
-      thrust::fill(reducing_row_host.begin(), reducing_row_host.begin()+col, 0);
-      std::copy(U.begin()+(start_loc),
-                U.begin()+(end_loc),
-                reducing_row_host.begin()+col);
-      reducing_row_dev = reducing_row_host;
-      // Scale and add
-      daxpy(coeff, top_row_dev, reducing_row_dev);
-
-      reducing_row_host = reducing_row_dev;
-      thrust::copy(reducing_row_host.begin()+col,
-                   reducing_row_host.end(),
-                   U.begin()+start_loc);
-    }
-  }
-
-  // now round down the zeros given some threshold
-  thrust::host_vector<double> final_host(n*n);
-  std::copy(U.begin(), U.end(), final_host.begin());
-  thrust::device_vector<double> final_dev = final_host;
-  to_zero(1e-12, final_dev); 
-  final_host = final_dev;
-  thrust::copy(final_host.begin(), final_host.end(), U.begin());
 
   LU retval;
   retval.U = U;
