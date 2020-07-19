@@ -103,27 +103,32 @@ void print_matrix(const std::vector<double>& A, size_t n)
 
 LU LU_factorization(const std::vector<double>& A, const size_t n)
 {
+  typedef thrust::device_vector<double>::iterator Iterator;
   assert(A.size() == n*n);
   std::vector<double> U(n*n);
   std::vector<double> L(n*n, 0);
 
   thrust::host_vector<double>   U_h = A;
   thrust::device_vector<double> U_d = U_h;
-  thrust::device_vector<double> Coeffs(n);
+  thrust::device_vector<double> Coeffs(n-1);
 
   // Let's start with just iterating manually over columns
   // Probably replace this with a counting iterator
+  print_matrix(A, n);
   for (size_t col = 0; col < n; ++col)
   {
     // Constant iterator for the current top row
-    thrust::constant_iterator<double> numerator(U_d[col*(n+1)]);
+    thrust::constant_iterator<double> denominator(U_d[col*(n+1)]);
     // strided iterator for the coff calcs
-    strided_range denominator(U_d.begin()+(n*col)+n, U.end(), n);
+    strided_range<Iterator> numerator(U_d.begin()+(n*col)+n, U_d.end(), n);
     // Coeff iterator
-    auto first = thrust::make_zip_iterator(thrust::make_tuple(numerator, denominator.begin()));
-    auto last = thrust::make_zip_iterator(thrust::make_tuple(numerator, denominator.end()));
-
-    thrust::copy(first, last, std::ostream_iterator<double>(std::cout, "\n"));
+    thrust::transform(numerator.begin(),
+                      numerator.end(),
+                      denominator,
+                      Coeffs.begin(),
+                      thrust::divides<double>());
+    thrust::copy(Coeffs.begin(), Coeffs.end()-col, std::ostream_iterator<double>(std::cout, " "));
+    std::cout << std::endl;
   }
 
   LU retval;

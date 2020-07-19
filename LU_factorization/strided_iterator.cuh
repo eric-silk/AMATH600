@@ -46,14 +46,6 @@ class strided_range
       // NTD
     }
 
-    strided_range(Iterator first, Iterator last, size_t stride)
-      : first(first)
-      , last(last)
-      , stride(stride)
-    {
-      // NTD
-    }
-
     iterator begin(void) const
     {
       return PermutationIterator(first, TransformIterator(CountingIterator(0), stride_functor(stride)));
