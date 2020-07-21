@@ -1,7 +1,8 @@
-#ifndef DEVICE_SPARSE_MATRIX_CUH
-#define DEVICE_SPARSE_MATRIX_CUH
+#ifndef SPARSE_MATRIX_CUH
+#define SPARSE_MATRIX_CUH
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
+#include <thrust/device_allocator.h>
 #include <thrust/generate.h>
 #include <thrust/copy.h>
 #include <algorithm>
@@ -9,22 +10,38 @@
 #include <cstdlib>
 #include <math.h>
 #include <assert.h>
+template<typename T, typename Enable = void>
+class base_ThrustCSRMatrix;
 
-#include "host_sparse_matrix.cuh"
+template<typename T>
+class base_ThrustCSRMatrix<T, std::enable_if<std::is_same<T, thrust::device_vector<double>>::value>>
+{
+  private:
+    thrust::device_vector<size_t, thrust::device_allocator<size_t>> m_row_indices, m_col_indices;
+    thrust::device_vector<double, thrust::device_allocator<double>> m_storage;
+};
 
-class HostCSRMatrix
+template<typename T>
+class base_ThrustCSRMatrix<T, std::enable_if<std::is_same<T, thrust::host_vector<double>>::value>>
+{
+  private:
+    thrust::host_vector<size_t, std::allocator<size_t>> m_row_indices, m_col_indices;
+    thrust::host_vector<double, std::allocator<double>> m_storage;
+};
+
+template<class T>
+class ThrustCSRMatrix : private base_ThrustCSRMatrix<T>
 {
   public:
-    HostCSRMatrix(size_t rows, size_t cols)
+    ThrustCSRMatrix(size_t rows, size_t cols)
       : m_is_open(false)
       , m_num_rows(rows)
       , m_num_cols(cols)
-      , m_row_indices(m_num_rows + 1, 0)
+      , m_row_indices(m_num_rows + 1)
     {
       // NTD
     }
-
-    HostCSRMatrix& operator=(const HostCSRMatrix& other)
+    ThrustCSRMatrix& operator=(const ThrustCSRMatrix& other)
     {
       if (&other == this)
       {
@@ -36,23 +53,7 @@ class HostCSRMatrix
       this->m_row_indices = other.m_row_indices;
       this->m_col_indices = other.m_col_indices;
       this->m_storage = other.m_storage;
-
-      return *this;
-    }
-
-    HostCSRMatrix& operator=(const DeviceCSRMatrix& other)
-    {
-      if (&other == this)
-      {
-        return *this;
-      }
-      this->m_is_open = other->m_is_open;
-      this->m_num_rows = other->m_num_rows;
-      this->m_num_cols = other->m_num_cols;
-      this->m_row_indices = other->m_row_indices;
-      this->m_col_indices = other->m_col_indices;
-      this->m_storage = other->m_storage;
-
+      
       return *this;
     }
 
@@ -100,10 +101,8 @@ class HostCSRMatrix
     size_t num_nonzeros(void) const { return m_storage.size(); };
 
   private:
-    friend class DeviceCSRMatrix;
     bool m_is_open;
     size_t m_num_rows, m_num_cols;
-    thrust::host_vector<size_t> m_row_indices, m_col_indices;
-    thrust::host_vector<double> m_storage;
 };
-#endif//DEVICE_SPARSE_MATRIX_CUH
+
+#endif//HOST_SPARSE_MATRIX_CUH

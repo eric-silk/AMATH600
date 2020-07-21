@@ -1,5 +1,4 @@
-#include "host_sparse_matrix.cuh"
-#include "device_sparse_matrix.cuh"
+#include "sparse_matrix.cuh"
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <random>
@@ -17,8 +16,8 @@ int main(int argc, char** argv)
     n = 6;
   }
 
-  HostCSRMatrix host_csr(n, n);
-  DeviceCSRMatrix dev_csr(n, n);
+  ThrustCSRMatrix<thrust::host_vector> host_csr(n, n);
+  ThrustCSRMatrix<thrust::device_vector> dev_csr(n, n);
   
   // Generate N random numbers and n i,j coords
   std::random_device rd;
