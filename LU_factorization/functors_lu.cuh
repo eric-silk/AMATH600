@@ -47,16 +47,3 @@ void to_zero(double epsilon, thrust::device_vector<double>& X)
   thrust::transform(X.begin(), X.end(), X.begin(), to_zero_functor(epsilon));
 }
 
-#if 0
-struct per_column_functor
-{
-  template <typename T>
-  __host__ __device__
-  void operator()(Tuple t)
-  {
-    // bottom_row = bottom_row - top_row * coeff
-    thrust::get<2>(t) = thrust::get<2>(t) - thrust::get<1>(t) * thrust::get<0>(t);
-  }
-}
-#endif
-

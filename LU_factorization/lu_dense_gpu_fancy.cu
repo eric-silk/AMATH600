@@ -42,9 +42,16 @@ int main(int argc, char **argv)
   std::srand(std::time(nullptr));
   std::generate(A.begin(), A.end(), rand_0_1);
 
-  print_matrix(A, n);
   auto factored = LU_factorization(A, n);
-  print_matrix(factored.U, n);
+  if (n < 20)
+  {
+    std::cout << "A:" << std::endl;
+    print_matrix(A, n);
+    std::cout << "U:" << std::endl;
+    print_matrix(factored.U, n);
+    std::cout << "L:" << std::endl;
+    print_matrix(factored.L, n);
+  }
 
   return 0;
 }
@@ -88,10 +95,11 @@ LU LU_factorization(const std::vector<double>& A, const size_t n)
 
   thrust::host_vector<double>   U_h = A;
   thrust::device_vector<double> U_d = U_h;
+  thrust::host_vector<double>   L_h(n*n);
+  thrust::device_vector<double> L_d(n*n);
   thrust::device_vector<double> Coeffs(n-1);
 
-  // Let's start with just iterating manually over columns
-  // Probably replace this with a counting iterator
+
   for (size_t col = 0; col < n-1; ++col)
   {
     // Constant iterator for the current top row
@@ -104,9 +112,13 @@ LU LU_factorization(const std::vector<double>& A, const size_t n)
                       denominator,
                       Coeffs.begin()+col,
                       thrust::divides<double>());
+    strided_range<Iterator> lower_column(L_d.begin()+(n*col)+col+n, L_d.end(), n);
+    thrust::copy(Coeffs.begin()+col, Coeffs.end(), lower_column.begin());
 
     const size_t top_start_offset = col*n+col;
     const size_t top_end_offset   = top_start_offset + n - col;
+    // It seems like this could be fused with some magic iterators such that
+    // the row reductions are done in parallel
     for (size_t row = col+1; row < n; ++row)
     {
       const size_t bot_start_offset = row*n+col;
@@ -122,9 +134,16 @@ LU LU_factorization(const std::vector<double>& A, const size_t n)
   to_zero(1e-12, U_d);
 
   U_h = U_d;
+  L_h = L_d;
+  for (size_t i = 0; i < n; ++i)
+  {
+    L_h[n*i+i] = 1;
+  }
   LU retval;
   retval.U.resize(n*n);
+  retval.L.resize(n*n);
   thrust::copy(U_h.begin(), U_h.end(),  retval.U.begin());
+  thrust::copy(L_h.begin(), L_h.end(),  retval.L.begin());
 
   return retval;
 }
