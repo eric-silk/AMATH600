@@ -29,4 +29,24 @@ void daxpy(double A, thrust::device_vector<double>& X, thrust::device_vector<dou
 {
   thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), daxpy_functor(A));
 }
+
+struct mac_functor
+{
+  template <typename Tuple>
+  __host__ __device__
+  void operator()(Tuple t)
+  {
+    // Y = Y + A*B
+    thrust::get<2>(t) += thrust::get<0>(t) + thrust::get<1>(t);
+  }
+};
+
+// y += a*b
+template <typename T>
+void mac(thrust::device_vector<T>& y, const thrust::device_vector<T>& a, const thrust::device_vector<T>& b)
+{
+  thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(a.begin(), b.begin(), y.begin())),
+                   thrust::make_zip_iterator(thrust::make_tuple(a.end(), b.end(), y.end())),
+                   mac_functor());
+}
 #endif//FUNCTORS_CUH

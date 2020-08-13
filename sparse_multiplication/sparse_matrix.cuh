@@ -161,34 +161,27 @@ class DeviceCSRMatrix
       thrust::fill(m_row_indices.begin(), m_row_indices.end(), 0);
     }
 
-    void matvec(const Vector& x, Vector& y) const {
-    for (size_t i = 0; i < num_rows_; ++i) {
-      for (size_t j = row_indices_[i]; j < row_indices_[i+1]; ++j)  {
-        y(i) += storage_[j] * x(col_indices_[j]);
-        }   
-      }   
-    }
-
     void matvec(const thrust::device_vector<double>& x, thrust::device_vector<double>& y) const
     {
       assert(m_num_rows == y.size());
-      thrust::fill(y.first(), y.end(), 0);
-      thrust::device_vector<double> tmp_vector(m_num_cols);
+      thrust::fill(y.begin(), y.end(), 0);
+      thrust::device_vector<double> tmp_vector(m_num_cols), map(m_num_cols);
       // The mapping vector for rehydrating the CSR representation
       for (size_t i = 0; i < m_num_rows; ++i)
       {
-        thrust::fill(map.first(), map.end(), 0);
-        thrust::fill(tmp_vector.first(), tmp_vector.end(), 0);
+        thrust::fill(map.begin(), map.end(), 0);
+        thrust::fill(tmp_vector.begin(), tmp_vector.end(), 0);
         // Create the map, sloppily
         for(size_t j = m_row_indices[i]; j < m_row_indices[j+1]; ++j)
         {
-          map[col_indices[j]] = 1;
+          map[m_col_indices[j]] = 1;
         }
+        // A corresponding reduce shouldn't be needed for this
         thrust::scatter(x.begin()+m_row_indices[i],
                         x.begin()+m_row_indices[i+1],
                         map.begin(),
                         tmp_vector.begin());
-        // TODO pick up tomorrow
+        mac(y, tmp_vector, x);
       }
     }
 

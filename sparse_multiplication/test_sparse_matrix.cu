@@ -38,4 +38,13 @@ int main(int argc, char** argv)
   host_csr.close_for_pushback();
 
   auto dev_csr = host_to_dev(host_csr);
+  
+  thrust::device_vector<double> unit_vector(n);
+  thrust::device_vector<double> out_vector(n);
+  thrust::fill(unit_vector.begin(), unit_vector.end(), 1);
+
+  dev_csr.matvec(unit_vector, out_vector);
+
+  std::cout << "Result:" << std::endl;
+  thrust::copy(out_vector.begin(), out_vector.end(), std::ostream_iterator<float>(std::cout, " "));
 }
