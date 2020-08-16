@@ -11,6 +11,7 @@
 #include <math.h>
 #include <assert.h>
 
+#include "mm_io.hpp"
 #include "functors.cuh"
 
 // I wasn't able to get templated types playing nicely. This would be an obvious improvement, I think.
@@ -80,9 +81,48 @@ class HostCSRMatrix
       thrust::fill(m_row_indices.begin(), m_row_indices.end(), 0);
     }
 
+    // Courtesy of Dr. Lumsdaine from AMATH583 (PS6, specifically!)
+    void read_csrmatrix(const std::string& filename)
+    {
+      std::tuple<size_t, size_t, std::vector<std::tuple<size_t, size_t, double>>> pack = read_mm(filename);
+
+      size_t M = std::get<0>(pack);
+      size_t N = std::get<1>(pack);
+      std::vector<std::tuple<size_t, size_t, double>> aos = std::get<2>(pack);
+
+      // sort by row
+      std::sort(aos.begin(), aos.end(), [] (auto &a, auto &b) -> bool {
+          return (std::get<0>(a) < std::get<0>(b) );
+        } );
+      
+      for (size_t k = 0; k < aos.size(); ++k) {
+        size_t i = std::get<0>(aos[k]);
+        size_t j = std::get<1>(aos[k]);
+        double v = std::get<2>(aos[k]);
+        this->push_back(i, j, v);
+      }
+
+      this->close_for_pushback();
+    }
+
     size_t num_rows(void) const { return m_num_rows; };
     size_t num_cols(void) const { return m_num_cols; };
     size_t num_nonzeros(void) const { return m_storage.size(); };
+
+    thrust::host_vector<double> rehydrate(void)
+    {
+      thrust::host_vector<double> dense(m_num_rows * m_num_cols);
+      thrust::fill(dense.begin(), dense.end(), 0);
+      for(size_t row = 0; row < m_row_indices.size() - 1; ++row)
+      {
+        for(size_t j = m_col_indices[row]; j < m_col_indices[row+1]; ++j)
+        {
+          dense[row * m_num_cols + j] = m_storage[j];
+        }
+      }
+
+      return dense;
+    }
 
     thrust::host_vector<size_t> get_row_indices(void) const { return m_row_indices; };
     thrust::host_vector<size_t> get_col_indices(void) const { return m_col_indices; };

@@ -45,6 +45,7 @@ int main(int argc, char** argv)
 
   dev_csr.matvec(unit_vector, out_vector);
 
+
   std::cout << "Result:" << std::endl;
   thrust::copy(out_vector.begin(), out_vector.end(), std::ostream_iterator<float>(std::cout, " "));
 }
