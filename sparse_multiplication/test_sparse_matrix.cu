@@ -1,51 +1,47 @@
-#include "sparse_matrix.cuh"
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <random>
 #include <limits>
+#include <assert.h>
+#include <cmath>
+#include "sparse_matrix.cuh"
+
+constexpr double EPSILON = 10e-12;
 
 int main(int argc, char** argv)
 {
-  size_t n;
-  if (argc >= 2)
+
+  std::vector<std::string> input_matrices = {"../data/jgl009.mtx"};
+  std::vector<std::string> output_vectors = {"../data/jgl009_id.mtx"};
+  for (size_t i = 0; i < input_matrices.size(); ++i)
   {
-    n = atoi(argv[1]);
+    std::cout << "Reading: " << input_matrices[i] << std::endl;;
+    HostCSRMatrix host_csr(input_matrices[i]);
+    std::cout << "Reading: " << output_vectors[i] << std::endl;;
+    HostCSRMatrix host_csr_result(output_vectors[i]);
+    std::cout << "Read matrices." << std::endl;
+
+    assert(host_csr.num_rows() == host_csr.num_cols());
+    assert(host_csr.num_cols() == host_csr_result.num_rows());
+    assert(host_csr_result.num_cols() == 1);
+    std::cout << "Passed asserts. Rehydrating." << std::endl;
+    thrust::host_vector<double> host_result = host_csr_result.rehydrate();
+    std::cout << "Rehydrated." << std::endl;
+    const size_t n = host_csr.num_rows();
+
+    auto dev_csr = host_to_dev(host_csr);
+    
+    thrust::device_vector<double> id_vector(n);
+    thrust::device_vector<double> out_vector(n);
+    thrust::fill(id_vector.begin(), id_vector.end(), 1);
+
+    dev_csr.matvec(id_vector, out_vector);
+    for (size_t i = 0; i < n; ++i)
+    {
+      if (abs(out_vector[i] - host_result[i]) > EPSILON)
+      {
+        std::cout << i << ": " << host_result[i] << ", " << out_vector[i] << std::endl;
+      }
+    }
   }
-  else
-  {
-    n = 6;
-  }
-
-  HostCSRMatrix host_csr(n, n);
-  
-  // Generate N random numbers and n i,j coords
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  // The distribution is inclusive, hence the n-1
-  std::uniform_int_distribution<size_t> coord_distr(0, n-1);
-  const double double_min = std::numeric_limits<double>::min();
-  const double double_max = std::numeric_limits<double>::max();
-  std::uniform_real_distribution<double> val_distr(double_min, double_max);
-
-  host_csr.open_for_pushback();
-  for (size_t i = 0; i < n; ++i)
-  {
-    size_t row = coord_distr(gen);
-    size_t col = coord_distr(gen);
-    double value = val_distr(gen);
-    host_csr.push_back(row, col, value);
-  }
-  host_csr.close_for_pushback();
-
-  auto dev_csr = host_to_dev(host_csr);
-  
-  thrust::device_vector<double> unit_vector(n);
-  thrust::device_vector<double> out_vector(n);
-  thrust::fill(unit_vector.begin(), unit_vector.end(), 1);
-
-  dev_csr.matvec(unit_vector, out_vector);
-
-
-  std::cout << "Result:" << std::endl;
-  thrust::copy(out_vector.begin(), out_vector.end(), std::ostream_iterator<float>(std::cout, " "));
 }

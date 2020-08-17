@@ -18,6 +18,20 @@
 class HostCSRMatrix
 {
   public:
+    HostCSRMatrix()
+      : m_is_open(false)
+      , m_num_rows(0)
+      , m_num_cols(0)
+      , m_row_indices()
+    {
+      // NTD
+    }
+
+    HostCSRMatrix(const std::string& matrix_name)
+    {
+      read_csrmatrix(matrix_name);
+    }
+
     HostCSRMatrix(size_t rows, size_t cols)
       : m_is_open(false)
       , m_num_rows(rows)
@@ -76,8 +90,11 @@ class HostCSRMatrix
 
     void clear(void)
     {
+      // TODO validate this and make it better
       m_col_indices.clear();
+      m_col_indices.resize(0);
       m_storage.clear();
+      m_col_indices.resize(0);
       thrust::fill(m_row_indices.begin(), m_row_indices.end(), 0);
     }
 
@@ -95,6 +112,12 @@ class HostCSRMatrix
           return (std::get<0>(a) < std::get<0>(b) );
         } );
       
+      this->open_for_pushback();
+      m_num_rows = M;
+      m_num_cols = N;
+      m_row_indices.resize(m_num_rows + 1);
+      thrust::fill(m_row_indices.begin(), m_row_indices.end(), 0);
+
       for (size_t k = 0; k < aos.size(); ++k) {
         size_t i = std::get<0>(aos[k]);
         size_t j = std::get<1>(aos[k]);
@@ -117,6 +140,7 @@ class HostCSRMatrix
       {
         for(size_t j = m_col_indices[row]; j < m_col_indices[row+1]; ++j)
         {
+          // TODO Segfault here, fix
           dense[row * m_num_cols + j] = m_storage[j];
         }
       }
