@@ -25,7 +25,9 @@ int main(int argc, char** argv)
     assert(host_csr.num_cols() == host_csr_result.num_rows());
     assert(host_csr_result.num_cols() == 1);
     std::cout << "Passed asserts. Rehydrating." << std::endl;
+
     thrust::host_vector<double> host_result = host_csr_result.rehydrate();
+
     std::cout << "Rehydrated." << std::endl;
     const size_t n = host_csr.num_rows();
 

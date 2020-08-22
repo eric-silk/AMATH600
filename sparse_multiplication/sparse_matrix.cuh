@@ -29,7 +29,7 @@ class HostCSRMatrix
 
     HostCSRMatrix(const std::string& matrix_name)
     {
-      read_csrmatrix(matrix_name);
+      this->read_csrmatrix(matrix_name);
     }
 
     HostCSRMatrix(size_t rows, size_t cols)
@@ -141,6 +141,34 @@ class HostCSRMatrix
         for(size_t j = m_col_indices[row]; j < m_col_indices[row+1]; ++j)
         {
           // TODO Segfault here, fix
+          if (row*m_num_cols + j >= dense.size())
+          {
+            std::cout << "row: " << row << std::endl;
+            std::cout << "m_num_cols: " << m_num_cols << std::endl;
+            std::cout << "j: " << j << std::endl;
+            std::cout << "m_row_indices: ";
+            for (auto&& r : m_row_indices) {
+              std::cout << r << " ";
+            }
+            std::cout << std::endl;
+            std::cout << "m_col_indices: ";
+            for (auto&& r : m_col_indices) {
+              std::cout << r << " ";
+            }
+            for (auto&& r : m_storage) {
+              std::cout << r << " ";
+            }
+            std::cout << std::endl;
+            std::cout << "m_storage: ";
+            for (auto&& r : m_storage) {
+              std::cout << r << " ";
+            }
+            std::cout << std::endl;
+            std::cout << row*m_num_cols+j << ", " << dense.size() << std::endl;
+          }
+          assert((row*m_num_cols + j) < dense.size());
+          assert(j < m_storage.size());
+
           dense[row * m_num_cols + j] = m_storage[j];
         }
       }

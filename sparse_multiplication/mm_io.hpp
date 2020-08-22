@@ -98,9 +98,9 @@ read_mm(std::istream& input_stream) {
       } else {
 	std::stringstream(buffer) >> d0 >> d1 >> v;
       }
-      aos.push_back({ d0 - 1, d1 - 1, 1.0 });
+      aos.push_back({ d0 - 1, d1 - 1, v });
       if (file_symmetry == true) {
-	aos.push_back({ d1 - 1, d0 - 1, 1.0 });
+	aos.push_back({ d1 - 1, d0 - 1, v });
       }
     }
   }
