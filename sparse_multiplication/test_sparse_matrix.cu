@@ -44,12 +44,11 @@ int main(int argc, char** argv)
     thrust::fill(id_vector.begin(), id_vector.end(), 1);
 
     dev_csr.matvec(id_vector, out_vector);
+    std::cout << "n: " << n << std::endl;
+    std::cout << "i, correct, rslt" << std::endl;
     for (size_t i = 0; i < n; ++i)
     {
-      if (abs(out_vector[i] - host_result[i]) > EPSILON)
-      {
-        std::cout << i << ": " << host_result[i] << ", " << out_vector[i] << std::endl;
-      }
+      std::cout << i << ": " << host_result[i] << ", " << out_vector[i] << std::endl;
     }
   }
 }
