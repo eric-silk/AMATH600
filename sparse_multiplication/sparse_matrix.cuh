@@ -136,40 +136,18 @@ class HostCSRMatrix
     {
       thrust::host_vector<double> dense(m_num_rows * m_num_cols);
       thrust::fill(dense.begin(), dense.end(), 0);
-      for(size_t row = 0; row < m_row_indices.size() - 1; ++row)
+      for (size_t row = 0; row < m_row_indices.size()-1; ++row)
       {
-        for(size_t j = m_col_indices[row]; j < m_col_indices[row+1]; ++j)
+        size_t colid_start = m_row_indices[row];
+        size_t colid_end = m_row_indices[row+1];
+        for (size_t colid = colid_start; colid < colid_end; ++colid)
         {
           // TODO Segfault here, fix
-          if (row*m_num_cols + j >= dense.size())
-          {
-            std::cout << "row: " << row << std::endl;
-            std::cout << "m_num_cols: " << m_num_cols << std::endl;
-            std::cout << "j: " << j << std::endl;
-            std::cout << "m_row_indices: ";
-            for (auto&& r : m_row_indices) {
-              std::cout << r << " ";
-            }
-            std::cout << std::endl;
-            std::cout << "m_col_indices: ";
-            for (auto&& r : m_col_indices) {
-              std::cout << r << " ";
-            }
-            for (auto&& r : m_storage) {
-              std::cout << r << " ";
-            }
-            std::cout << std::endl;
-            std::cout << "m_storage: ";
-            for (auto&& r : m_storage) {
-              std::cout << r << " ";
-            }
-            std::cout << std::endl;
-            std::cout << row*m_num_cols+j << ", " << dense.size() << std::endl;
-          }
-          assert((row*m_num_cols + j) < dense.size());
-          assert(j < m_storage.size());
-
-          dense[row * m_num_cols + j] = m_storage[j];
+          size_t col = m_col_indices[colid];
+          double value = m_storage[colid];
+          assert((row*m_num_cols + col) < dense.size());
+          assert(col < m_storage.size());
+          dense[row * m_num_cols + col] = m_storage[colid];
         }
       }
 

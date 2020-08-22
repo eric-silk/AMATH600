@@ -25,11 +25,17 @@ int main(int argc, char** argv)
     assert(host_csr.num_cols() == host_csr_result.num_rows());
     assert(host_csr_result.num_cols() == 1);
     std::cout << "Passed asserts. Rehydrating." << std::endl;
-
-    thrust::host_vector<double> host_result = host_csr_result.rehydrate();
+    auto host_result = host_csr_result.rehydrate();
 
     std::cout << "Rehydrated." << std::endl;
-    const size_t n = host_csr.num_rows();
+    const size_t n = host_csr_result.num_rows();
+    const size_t m = host_csr_result.num_cols();
+    for (size_t row = 0; row < n; ++row) {
+      for (size_t col = 0; col < m; ++col) {
+        std::cout << host_result[row*m + col] << " ";
+      }
+      std::cout << std::endl;
+    }
 
     auto dev_csr = host_to_dev(host_csr);
     
