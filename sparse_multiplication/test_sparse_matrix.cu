@@ -6,7 +6,7 @@
 #include <cmath>
 #include "sparse_matrix.cuh"
 
-constexpr double EPSILON = 10e-12;
+//constexpr double EPSILON = 10e-12;
 
 int main(int argc, char** argv)
 {
@@ -42,6 +42,7 @@ int main(int argc, char** argv)
     thrust::device_vector<double> id_vector(n);
     thrust::device_vector<double> out_vector(n);
     thrust::fill(id_vector.begin(), id_vector.end(), 1);
+    thrust::fill(out_vector.begin(), out_vector.end(), 0);
 
     dev_csr.matvec(id_vector, out_vector);
     std::cout << "n: " << n << std::endl;

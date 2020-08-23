@@ -5,6 +5,7 @@
 #include <thrust/device_allocator.h>
 #include <thrust/generate.h>
 #include <thrust/copy.h>
+#include <thrust/inner_product.h>
 #include <algorithm>
 #include <vector>
 #include <cstdlib>
@@ -240,54 +241,22 @@ class DeviceCSRMatrix
       const thrust::host_vector<size_t> col_indices = m_col_indices;
       const thrust::host_vector<size_t> row_indices = m_row_indices;
       thrust::fill(y.begin(), y.end(), 0);
-      thrust::host_vector<double> h_tmp_vector(m_num_cols), h_map(m_num_cols);
       thrust::device_vector<double> tmp_vector(m_num_cols), map(m_num_cols);
       // The mapping vector for rehydrating the CSR representation
       for (size_t row_i = 0; row_i < m_row_indices.size()-1; ++row_i)
       {
-        thrust::fill(h_map.begin(), h_map.end(), 0);
         thrust::fill(tmp_vector.begin(), tmp_vector.end(), 0);
-        // Create the map, sloppily
         // TODO thrust::sequence or thrust::remove_copy_if?
-        for(size_t col_id = row_indices[row_i]; col_id < row_indices[row_i+1]; ++col_id)
-        {
-          assert(col_indices[col_id] < map.size());
-          //h_map[col_indices[col_id]] = 1;
-        }
-        thrust::copy(col_indices.begin()+row_indices[row_i],
-                     col_indices.begin() + row_indices[row_i+1],
+        thrust::copy(m_col_indices.begin() + m_row_indices[row_i],
+                     m_col_indices.begin() + m_row_indices[row_i+1],
                      map.begin());
         // A corresponding gather shouldn't be needed for this
-        thrust::scatter(m_storage.begin()+row_indices[row_i],
-                        m_storage.begin()+row_indices[row_i+1],
+        thrust::scatter(m_storage.begin() + m_row_indices[row_i],
+                        m_storage.begin() + m_row_indices[row_i+1],
                         map.begin(),
                         tmp_vector.begin());
-        // This needs to be changed  to a reduce(tmp.begin(), tmp.end(), y);
-        // inner product!
-        //mac(y, tmp_vector, x);
-#ifndef NDEBUG
-        h_map = map;
-        thrust::host_vector<double> out_y = y;
-        thrust::host_vector<double> out_tmp_vector = tmp_vector;
-        thrust::host_vector<double> h_storage = m_storage;
-        std::vector<double> sliced_storage(row_indices[row_i+1] - row_indices[row_i]);
-        thrust::copy(h_storage.begin() + row_indices[row_i],
-                     h_storage.begin() + row_indices[row_i+1],
-                     sliced_storage.begin());
-        std::cout << "i: " << std::endl;
-        std::cout << "map: " << std::endl;
-        for (auto&& print : h_map) {
-          std::cout << print << " ";
-        } std::cout << std::endl;
-        std::cout << "storage: " << std::endl;
-        for (auto&& print : sliced_storage) {
-          std::cout << print << " ";
-        } std::cout << std::endl;
-        std::cout << "tmp_vector:" << std::endl;
-        for (auto&& print : out_tmp_vector) {
-          std::cout << print << " ";
-        } std::cout << std::endl;
-#endif
+        double init = y[row_i];
+        y[row_i] = thrust::inner_product(tmp_vector.begin(), tmp_vector.end(), x.begin(), init);
       }
     }
 

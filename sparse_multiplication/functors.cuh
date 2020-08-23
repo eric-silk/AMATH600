@@ -30,6 +30,7 @@ void daxpy(double A, thrust::device_vector<double>& X, thrust::device_vector<dou
   thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), daxpy_functor(A));
 }
 
+// This isn't actually working as expected, I think :(
 struct mac_functor
 {
   template <typename Tuple>
