@@ -6,6 +6,7 @@
 #include <thrust/generate.h>
 #include <thrust/copy.h>
 #include <thrust/inner_product.h>
+#include <thrust/iterator/constant_iterator.h>
 #include <algorithm>
 #include <vector>
 #include <cstdlib>
@@ -238,26 +239,15 @@ class DeviceCSRMatrix
          to put the result into (y).
       */
       assert(m_num_rows == y.size());
-      const thrust::host_vector<size_t> col_indices = m_col_indices;
-      const thrust::host_vector<size_t> row_indices = m_row_indices;
       thrust::fill(y.begin(), y.end(), 0);
       thrust::device_vector<double> tmp_vector(m_num_cols), map(m_num_cols);
-      // The mapping vector for rehydrating the CSR representation
-      for (size_t row_i = 0; row_i < m_row_indices.size()-1; ++row_i)
-      {
-        thrust::fill(tmp_vector.begin(), tmp_vector.end(), 0);
-        // TODO thrust::sequence or thrust::remove_copy_if?
-        thrust::copy(m_col_indices.begin() + m_row_indices[row_i],
-                     m_col_indices.begin() + m_row_indices[row_i+1],
-                     map.begin());
-        // A corresponding gather shouldn't be needed for this
-        thrust::scatter(m_storage.begin() + m_row_indices[row_i],
-                        m_storage.begin() + m_row_indices[row_i+1],
-                        map.begin(),
-                        tmp_vector.begin());
-        double init = y[row_i];
-        y[row_i] = thrust::inner_product(tmp_vector.begin(), tmp_vector.end(), x.begin(), init);
-      }
+      
+      thrust::counting_iterator<size_t> row_start(0);
+      thrust::counting_iterator<size_t> row_end = row_start + m_row_indices.size() - 1;
+      // Ugh. There is probably a better way than this template abomination
+      thrust::constant_iterator<thrust::detail::normal_iterator<thrust::device_ptr<const double>>> x_start(x.begin());
+      matvec_functor f(m_col_indices, m_row_indices, m_storage, m_num_cols);
+      thrust::transform(row_start, row_end, y.begin(), f);
     }
 
     size_t num_rows(void) const { return m_num_rows; };

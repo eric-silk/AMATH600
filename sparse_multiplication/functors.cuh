@@ -19,16 +19,57 @@ struct daxpy_functor
   const double a;
   daxpy_functor(double _a) : a(_a) {}
   __host__ __device__
-    double operator()(const double& x, const double& y) const
-    {
-      return a * x + y;
-    }
+  double operator()(const double& x, const double& y) const
+  {
+    return a * x + y;
+  }
 };
 
 void daxpy(double A, thrust::device_vector<double>& X, thrust::device_vector<double>& Y)
 {
   thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), daxpy_functor(A));
 }
+
+// This feels clumsy. But, hopefully will work for now.
+struct matvec_functor
+{
+  // TODO consider references/ptrs rather than constructed copies?
+  thrust::device_vector<size_t> m_col_indices;
+  thrust::device_vector<size_t> m_row_indices;
+  thrust::device_vector<size_t> map;
+  thrust::device_vector<double> m_storage;
+  thrust::device_vector<double> tmp_vector;
+  matvec_functor(const thrust::device_vector<size_t>& col_indices,
+                 const thrust::device_vector<size_t>& row_indices,
+                 const thrust::device_vector<double>& storage,
+                 const size_t num_cols)
+    : m_col_indices(col_indices)
+    , m_row_indices(row_indices)
+    , m_storage(storage)
+    , tmp_vector(num_cols)
+  {
+    // NTD
+  }
+
+  template <typename Tuple>
+  __host__ __device__
+  double operator()(Tuple t)
+  {
+    auto x_begin = thrust::get<0>(t);
+    auto row_i = thrust::get<1>(t);
+    thrust::fill(tmp_vector.begin(), tmp_vector.end(), 0);
+    // TODO thrust::sequence or thrust::remove_copy_if?
+    thrust::copy(m_col_indices.begin() + m_row_indices[row_i],
+                 m_col_indices.begin() + m_row_indices[row_i+1],
+                 map.begin());
+    // A corresponding gather shouldn't be needed for this
+    thrust::scatter(m_storage.begin() + m_row_indices[row_i],
+                    m_storage.begin() + m_row_indices[row_i+1],
+                    map.begin(),
+                    tmp_vector.begin());
+    return thrust::inner_product(tmp_vector.begin(), tmp_vector.end(), x_begin, 0);
+  }
+};
 
 // This isn't actually working as expected, I think :(
 struct mac_functor
