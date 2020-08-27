@@ -30,46 +30,47 @@ void daxpy(double A, thrust::device_vector<double>& X, thrust::device_vector<dou
   thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), daxpy_functor(A));
 }
 
-// This feels clumsy. But, hopefully will work for now.
-struct matvec_functor
+struct mat_mult_functor
 {
-  // TODO consider references/ptrs rather than constructed copies?
-  const thrust::device_vector<size_t>& m_col_indices;
-  const thrust::device_vector<size_t>& m_row_indices;
-  thrust::device_vector<size_t> map;
-  const thrust::device_vector<double>& m_storage;
-  const size_t num_cols;
+  // taken from here and modified to be a matrix vector product (r=1):
+  // https://stackoverflow.com/a/56070858/8341166
+  thrust::device_ptr<double> A, B;
+  const size_t m, n, r;
 
-  const thrust::device_vector<double>& x;
-
-  matvec_functor(const thrust::device_vector<size_t>& col_indices,
-                 const thrust::device_vector<size_t>& row_indices,
-                 const thrust::device_vector<double>& storage,
-                 const size_t num_cols,
-                 const thrust::device_vector<double>& x)
-    : m_col_indices(col_indices)
-    , m_row_indices(row_indices)
-    , m_storage(storage)
-    , num_cols(num_cols)
-    , x(x)
+  //  Matrix vector, r = 1
+  mat_mult_functor(thrust::device_ptr<double> _A, thrust::device_ptr<double> _B, const size_t _m, const size_t _n)
+    : A(_A)
+    , B(_B)
+    , m(_m)
+    , n(_n)
+    , r(1)
   {
     // NTD
-  }
+  };
 
-  __device__
-  double operator()(size_t row_i)
+  //  Matrix Matrix
+  mat_mult_functor(thrust::device_ptr<double> _A, thrust::device_ptr<double> _B, const size_t _m, const size_t _n, const size_t _r)
+    : A(_A)
+    , B(_B)
+    , m(_m)
+    , n(_n)
+    , r(_r)
   {
-    thrust::device_vector<double> tmp_vector(num_cols, 0);
-    // TODO thrust::sequence or thrust::remove_copy_if?
-    thrust::copy(m_col_indices.begin() + m_row_indices[row_i],
-                 m_col_indices.begin() + m_row_indices[row_i+1],
-                 map.begin());
-    // A corresponding gather shouldn't be needed for this
-    thrust::scatter(m_storage.begin() + m_row_indices[row_i],
-                    m_storage.begin() + m_row_indices[row_i+1],
-                    map.begin(),
-                    tmp_vector.begin());
-    return thrust::inner_product(tmp_vector.begin(), tmp_vector.end(), x.begin(), 0);
+    // NTD
+  };
+
+  __host__ __device__
+  double operator()(size_t idx)
+  {
+    double sum = 0.0;
+    size_t row = idx/r;
+    size_t col = idx - (row * r);
+    for (size_t i = 0; i < m; ++i)
+    {
+      sum += A[col + row*i] * B[col + row*i];
+    }
+
+    return sum;
   }
 };
 

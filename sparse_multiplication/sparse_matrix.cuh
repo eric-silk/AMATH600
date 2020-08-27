@@ -232,25 +232,47 @@ class DeviceCSRMatrix
       thrust::fill(m_row_indices.begin(), m_row_indices.end(), 0);
     }
 
-    void matvec(const thrust::device_vector<double>& x, thrust::device_vector<double>& y) const
+    thrust::device_vector<double> rehydrate(void) const
     {
-      /*
-         This function works by accepting a vector to multiply by (x), a vector
-         to put the result into (y).
-      */
+      thrust::device_vector<double> dense(m_num_rows * m_num_cols);
+      thrust::fill(dense.begin(), dense.end(), 0);
+      for (size_t row = 0; row < m_row_indices.size()-1; ++row)
+      {
+        size_t colid_start = m_row_indices[row];
+        size_t colid_end = m_row_indices[row+1];
+        for (size_t colid = colid_start; colid < colid_end; ++colid)
+        {
+          size_t col = m_col_indices[colid];
+          double value = m_storage[colid];
+          assert((row*m_num_cols + col) < dense.size());
+          assert(col < m_storage.size());
+          dense[row * m_num_cols + col] = m_storage[colid];
+        }
+      }
+
+      return dense;
+    }
+
+    void matvec(thrust::device_vector<double>& x, thrust::device_vector<double>& y) const
+    {
       assert(m_num_rows == y.size());
+      assert(m_num_cols == x.size());
       thrust::fill(y.begin(), y.end(), 0);
-      matvec_functor f(m_col_indices, m_row_indices, m_storage, m_num_cols, x);
 
-      // x begin, row i
-      auto x_begin = thrust::make_constant_iterator(x.begin());
-      auto row_i_begin = thrust::make_counting_iterator(0);
-      auto row_i_end = row_i_begin + m_num_rows-1;
+      // This is crappy. I was approaching the problem entirely wrong, so I'm going to just
+      // do a full rehydration and talk w/ Dr. L about what I was doing.
+      // Short version: what you can do in a Thrust functor is far more limited than I expected
+      // By the time I got all the nasty template/tuple errors sorted...it complained about calling
+      // __host__ functions in __device__ functions :(
 
-      auto matvec_tuple_begin = thrust::make_tuple(row_i_begin, x.begin());
-      auto matvec_tuple_end = thrust::make_tuple(row_i_end, x.begin());
-      
-      thrust::transform(row_i_begin, row_i_end, y.begin(), f);
+      thrust::device_vector<double> rehydrated = this->rehydrate();
+      auto rehydrated_start = thrust::raw_pointer_cast(rehydrated.data());
+      auto x_start = thrust::raw_pointer_cast(x.data());
+      mat_mult_functor mv_f(&rehydrated[0], &x[0], m_num_rows, m_num_cols, m_num_cols);
+      thrust::transform(thrust::counting_iterator<size_t>(0),
+                        thrust::counting_iterator<size_t>(m_num_rows),
+                        y.begin(),
+                        mv_f);
     }
 
     size_t num_rows(void) const { return m_num_rows; };
