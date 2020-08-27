@@ -240,14 +240,17 @@ class DeviceCSRMatrix
       */
       assert(m_num_rows == y.size());
       thrust::fill(y.begin(), y.end(), 0);
-      thrust::device_vector<double> tmp_vector(m_num_cols), map(m_num_cols);
+      matvec_functor f(m_col_indices, m_row_indices, m_storage, m_num_cols, x);
+
+      // x begin, row i
+      auto x_begin = thrust::make_constant_iterator(x.begin());
+      auto row_i_begin = thrust::make_counting_iterator(0);
+      auto row_i_end = row_i_begin + m_num_rows-1;
+
+      auto matvec_tuple_begin = thrust::make_tuple(row_i_begin, x.begin());
+      auto matvec_tuple_end = thrust::make_tuple(row_i_end, x.begin());
       
-      thrust::counting_iterator<size_t> row_start(0);
-      thrust::counting_iterator<size_t> row_end = row_start + m_row_indices.size() - 1;
-      // Ugh. There is probably a better way than this template abomination
-      thrust::constant_iterator<thrust::detail::normal_iterator<thrust::device_ptr<const double>>> x_start(x.begin());
-      matvec_functor f(m_col_indices, m_row_indices, m_storage, m_num_cols);
-      thrust::transform(row_start, row_end, y.begin(), f);
+      thrust::transform(row_i_begin, row_i_end, y.begin(), f);
     }
 
     size_t num_rows(void) const { return m_num_rows; };
