@@ -35,39 +35,25 @@ struct mat_mult_functor
   // taken from here and modified to be a matrix vector product (r=1):
   // https://stackoverflow.com/a/56070858/8341166
   thrust::device_ptr<double> A, B;
-  const size_t m, n, r;
+  const size_t rows, cols;
 
   //  Matrix vector, r = 1
-  mat_mult_functor(thrust::device_ptr<double> _A, thrust::device_ptr<double> _B, const size_t _m, const size_t _n)
+  mat_mult_functor(thrust::device_ptr<double> _A, thrust::device_ptr<double> _B, const size_t _rows, const size_t _cols)
     : A(_A)
     , B(_B)
-    , m(_m)
-    , n(_n)
-    , r(1)
-  {
-    // NTD
-  };
-
-  //  Matrix Matrix
-  mat_mult_functor(thrust::device_ptr<double> _A, thrust::device_ptr<double> _B, const size_t _m, const size_t _n, const size_t _r)
-    : A(_A)
-    , B(_B)
-    , m(_m)
-    , n(_n)
-    , r(_r)
+    , rows(_rows)
+    , cols(_cols)
   {
     // NTD
   };
 
   __host__ __device__
-  double operator()(size_t idx)
+  double operator()(size_t row)
   {
     double sum = 0.0;
-    size_t row = idx/r;
-    size_t col = idx - (row * r);
-    for (size_t i = 0; i < m; ++i)
+    for (size_t i = 0; i < cols; ++i)
     {
-      sum += A[col + row*i] * B[col + row*i];
+      sum += A[rows*row + i] * B[i];
     }
 
     return sum;

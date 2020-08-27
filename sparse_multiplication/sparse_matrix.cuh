@@ -268,7 +268,7 @@ class DeviceCSRMatrix
       thrust::device_vector<double> rehydrated = this->rehydrate();
       auto rehydrated_start = thrust::raw_pointer_cast(rehydrated.data());
       auto x_start = thrust::raw_pointer_cast(x.data());
-      mat_mult_functor mv_f(&rehydrated[0], &x[0], m_num_rows, m_num_cols, m_num_cols);
+      mat_mult_functor mv_f(&rehydrated[0], &x[0], m_num_rows, m_num_cols);
       thrust::transform(thrust::counting_iterator<size_t>(0),
                         thrust::counting_iterator<size_t>(m_num_rows),
                         y.begin(),

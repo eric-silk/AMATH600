@@ -20,8 +20,6 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
-
 add_executable(test_sparse_matrix test_sparse_matrix.cu)
 set_property(TARGET test_sparse_matrix PROPERTY CXX_STANDARD 14)
 target_compile_options(test_sparse_matrix PRIVATE -g -G)
