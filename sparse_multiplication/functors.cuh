@@ -65,9 +65,10 @@ struct matvec_functor
 
 struct matmat_functor
 {
-  // taken from here and modified to be a matrix vector product (r=1):
+  // taken from here and modified as needed
   // https://stackoverflow.com/a/56070858/8341166
   thrust::device_ptr<double> A, B;
+  // A rows, A cols, B cols
   const size_t m, n, r;
 
   matmat_functor(thrust::device_ptr<double> _A,
@@ -85,14 +86,15 @@ struct matmat_functor
   }
 
   __host__ __device__
-  float operator()(size_t idx)
+  float operator()(size_t C_result_location)
   {
     double sum = 0.0;
-    size_t row = idx / r;
-    size_t col = idx - (row * r);
+    size_t row = C_result_location / r;
+    size_t col = C_result_location - (row * r);
     for (size_t i = 0;  i < m; i++)
     {
-      sum += A[col + row*i] * B[col + row*i];
+      //sum += A[col + row*i] * B[col + row*i];
+      sum += A[row*n + i] * B[r*i+col];
     }
     return sum;
   }
