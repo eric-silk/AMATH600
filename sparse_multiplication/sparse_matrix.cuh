@@ -85,9 +85,12 @@ class HostCSRMatrix
        assert(col < m_num_rows);
 
        // TODO thrust-ize?
-       ++m_row_indices[row];
-       m_col_indices.push_back(col);
-       m_storage.push_back(value);
+       if (value != 0.0)
+       {
+         ++m_row_indices[row];
+         m_col_indices.push_back(col);
+         m_storage.push_back(value);
+       }
     }
 
     void clear(void)
@@ -169,6 +172,14 @@ class HostCSRMatrix
 class DeviceCSRMatrix
 {
   public:
+    DeviceCSRMatrix()
+      : m_is_open(false)
+      , m_num_rows(0)
+      , m_num_cols(0)
+      , m_row_indices()
+    {
+      // NTD
+    }
     DeviceCSRMatrix(size_t rows, size_t cols)
       : m_is_open(false)
       , m_num_rows(rows)
@@ -220,9 +231,12 @@ class DeviceCSRMatrix
        assert(col < m_num_rows);
 
        // TODO thrust-ize?
-       ++m_row_indices[row];
-       m_col_indices.push_back(col);
-       m_storage.push_back(value);
+       if (value != 0.0)
+       {
+         ++m_row_indices[row];
+         m_col_indices.push_back(col);
+         m_storage.push_back(value);
+       }
     }
 
     void clear(void)
@@ -268,11 +282,45 @@ class DeviceCSRMatrix
       thrust::device_vector<double> rehydrated = this->rehydrate();
       auto rehydrated_start = thrust::raw_pointer_cast(rehydrated.data());
       auto x_start = thrust::raw_pointer_cast(x.data());
-      mat_mult_functor mv_f(&rehydrated[0], &x[0], m_num_rows, m_num_cols);
+      matvec_functor mv_f(&rehydrated[0], &x[0], m_num_rows, m_num_cols);
       thrust::transform(thrust::counting_iterator<size_t>(0),
                         thrust::counting_iterator<size_t>(m_num_rows),
                         y.begin(),
                         mv_f);
+    }
+
+    DeviceCSRMatrix matmat(const DeviceCSRMatrix& B) const
+    {
+      assert(this->m_num_cols == B.num_rows());
+      const size_t B_cols = B.num_cols();
+
+      thrust::device_vector<double> tmp_out(this->m_num_rows * B.num_cols());
+      thrust::fill(tmp_out.begin(), tmp_out.end(), 0);
+      thrust::device_vector<double> A_rehydrated = this->rehydrate();
+      thrust::device_vector<double> B_rehydrated = B.rehydrate();
+      // I have to be persnickitey about this here for some reason.
+      thrust::device_ptr<double> A_data = A_rehydrated.data();
+      thrust::device_ptr<double> B_data = B_rehydrated.data();
+      matmat_functor mm_f(A_data,
+                          B_data,
+                          this->m_num_rows,
+                          this->m_num_cols,
+                          B_cols);
+      thrust::transform(thrust::counting_iterator<size_t>(0),
+                        thrust::counting_iterator<size_t>(m_num_cols * B.num_cols()),
+                        tmp_out.begin(),
+                        mm_f);
+      DeviceCSRMatrix retval(this->m_num_rows, B.num_cols());
+      retval.open_for_pushback();
+      for (size_t row = 0; row < this->m_num_rows; ++row)
+      {
+        for (size_t col = 0; col < B.num_cols(); ++col)
+        {
+          retval.push_back(row, col, tmp_out[row * B.num_cols() + col]);
+        }
+      }
+      retval.close_for_pushback();
+      return retval;
     }
 
     size_t num_rows(void) const { return m_num_rows; };

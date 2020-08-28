@@ -4,6 +4,7 @@
 #include <limits>
 #include <assert.h>
 #include <cmath>
+#include <iostream>
 #include "sparse_matrix.cuh"
 
 //constexpr double EPSILON = 10e-12;
@@ -51,5 +52,30 @@ int main(int argc, char** argv)
     {
       std::cout << i << ": " << host_result[i] << ", " << out_vector[i] << std::endl;
     }
+  }
+
+  std::cout << "Now doing MatMat..." << std::endl;
+  HostCSRMatrix input_csr("../data/jgl009.mtx");
+  HostCSRMatrix correct_output_csr("../data/jgl009_squared.mtx");
+  auto dev_csr = host_to_dev(input_csr);
+  DeviceCSRMatrix outloc = dev_csr.matmat(dev_csr);
+  auto result = outloc.rehydrate();
+  for (size_t row = 0; row < outloc.num_rows(); ++row)
+  {
+    for (size_t col = 0; col < outloc.num_cols(); ++col)
+    {
+      std::cout << result[row*outloc.num_cols() + col] << " ";
+    }
+    std::cout << std::endl;
+  }
+  std::cout << "==================" << std::endl;
+  auto real_result = correct_output_csr.rehydrate();
+  for (size_t row = 0; row < outloc.num_rows(); ++row)
+  {
+    for (size_t col = 0; col < outloc.num_cols(); ++col)
+    {
+      std::cout << real_result[row*correct_output_csr.num_cols() + col] << " ";
+    }
+    std::cout << std::endl;
   }
 }

@@ -30,7 +30,7 @@ void daxpy(double A, thrust::device_vector<double>& X, thrust::device_vector<dou
   thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), daxpy_functor(A));
 }
 
-struct mat_mult_functor
+struct matvec_functor
 {
   // taken from here and modified to be a matrix vector product (r=1):
   // https://stackoverflow.com/a/56070858/8341166
@@ -38,7 +38,10 @@ struct mat_mult_functor
   const size_t rows, cols;
 
   //  Matrix vector, r = 1
-  mat_mult_functor(thrust::device_ptr<double> _A, thrust::device_ptr<double> _B, const size_t _rows, const size_t _cols)
+  matvec_functor(thrust::device_ptr<double> _A,
+                 thrust::device_ptr<double> _B,
+                 const size_t _rows,
+                 const size_t _cols)
     : A(_A)
     , B(_B)
     , rows(_rows)
@@ -56,6 +59,41 @@ struct mat_mult_functor
       sum += A[rows*row + i] * B[i];
     }
 
+    return sum;
+  }
+};
+
+struct matmat_functor
+{
+  // taken from here and modified to be a matrix vector product (r=1):
+  // https://stackoverflow.com/a/56070858/8341166
+  thrust::device_ptr<double> A, B;
+  const size_t m, n, r;
+
+  matmat_functor(thrust::device_ptr<double> _A,
+                 thrust::device_ptr<double> _B,
+                 const size_t _m,
+                 const size_t _n,
+                 const size_t _r)
+    : A(_A)
+    , B(_B)
+    , m(_m)
+    , n(_n)
+    , r(_r)
+  {
+    // NTD
+  }
+
+  __host__ __device__
+  float operator()(size_t idx)
+  {
+    double sum = 0.0;
+    size_t row = idx / r;
+    size_t col = idx - (row * r);
+    for (size_t i = 0;  i < m; i++)
+    {
+      sum += A[col + row*i] * B[col + row*i];
+    }
     return sum;
   }
 };
