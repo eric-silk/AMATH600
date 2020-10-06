@@ -113,9 +113,12 @@ class HostCSRMatrix
       std::vector<std::tuple<size_t, size_t, double>> aos = std::get<2>(pack);
 
       // sort by row
-      std::sort(aos.begin(), aos.end(), [] (auto &a, auto &b) -> bool {
-          return (std::get<0>(a) < std::get<0>(b) );
-        } );
+      auto sort_lambda = [](auto &a, auto &b) -> bool
+      {
+          return (std::get<0>(a) < std::get<0>(b));
+      };
+
+      std::sort(aos.begin(), aos.end(), sort_lambda);
       
       this->open_for_pushback();
       m_num_rows = M;
