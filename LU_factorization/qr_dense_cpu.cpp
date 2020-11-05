@@ -16,9 +16,9 @@ int main(int argc, char *argv[])
 bool wiki_example(void)
 {
   // https://en.wikipedia.org/wiki/QR_decomposition#Example_2
-  auto A = (Eigen::Matrix3d() << 12, -51, 4, 6, 167, -68, -4, 24, -41).finished();
+  Eigen::MatrixXd A = (Eigen::Matrix3d() << 12, -51, 4, 6, 167, -68, -4, 24, -41).finished();
   std::cout << "A:" << std::endl << A << std::endl;
   auto qr_result = QR(A);
-  std::cout "Result: " << std::endl << qr_result.Q << std::endl;
+  std::cout << "Result: " << std::endl << qr_result.Q << std::endl;
   return true;
 }

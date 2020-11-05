@@ -13,22 +13,22 @@ enum QRTechnique
   Givens
 };
 
-
-
 template<typename T=double>
 struct QRMatrices
 {
-  Eigen::MatrixBase<T> Q;
-  Eigen::MatrixBase<T> R;
+
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Q;
+  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> R;
 };
 
 template<typename T=double>
-void QR_col_op(Eigen::MatrixBase<T>& A, size_t col_i)
+void QR_col_op(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& A, size_t col_i)
 {
-  auto e = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(A.rows()-col_i, 1);
+  Eigen::Matrix<T, Eigen::Dynamic, 1> e = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(A.rows()-col_i, 1);
   e(0) = 1;
   auto y = A.block(col_i, col_i, A.rows()-col_i, 1);
-  T sign_y = (y(0) >= 0 ? 1 : -1);
+
+  T sign_y = (y(0, 0) >= 0 ? 1 : -1);
   auto w = y - sign_y * y.norm() * e;
   auto v = w.normalized();
   auto two_vk_tkt = 2*v*v.transpose();
@@ -42,8 +42,7 @@ void QR_col_op(Eigen::MatrixBase<T>& A, size_t col_i)
 }
 
 template<typename T=double>
-QRMatrices<T> QR(const Eigen::MatrixBase<T>& A)
-// TODO should A be modified in place?
+QRMatrices<T> QR(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& A)
 {
   for (size_t col = 0; col < A.cols(); ++col)
   {
